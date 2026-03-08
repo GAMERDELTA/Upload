@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>canvas heart · parametric love</title>
+    <style>
+        * {
+            margin: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(145deg, #1a1c2c 0%, #2b2f44 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card {
+            background: rgba(18, 20, 30, 0.75);
+            backdrop-filter: blur(6px);
+            border-radius: 2.5rem;
+            padding: 2rem 2rem 1.8rem 2rem;
+            box-shadow: 0 25px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 120, 160, 0.2) inset;
+        }
+        canvas {
+            display: block;
+            width: 420px;
+            height: 420px;
+            border-radius: 28px;
+            background: #1e212e;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), 0 0 0 2px #3a2e4a, 0 0 0 5px #251f30;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        canvas:active {
+            transform: scale(0.98);
+        }
+        .caption {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.2rem;
+            padding: 0 0.4rem;
+        }
+        .caption span {
+            color: #e3dcef;
+            letter-spacing: 0.5px;
+            font-weight: 400;
+            background: #2a253c;
+            padding: 0.4rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.95rem;
+            border: 1px solid #785a8b;
+            backdrop-filter: blur(4px);
+        }
+        .caption button {
+            background: #d45b7a;
+            border: none;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 0.45rem 1.6rem;
+            border-radius: 40px;
+            letter-spacing: 0.3px;
+            box-shadow: 0 6px 0 #722b44, 0 6px 14px rgba(0,0,0,0.5);
+            transition: all 0.07s linear;
+            cursor: pointer;
+            border: 1px solid #ffb0c3;
+        }
+        .caption button:active {
+            transform: translateY(5px);
+            box-shadow: 0 1px 0 #722b44, 0 6px 12px rgba(0,0,0,0.5);
+        }
+        .caption button:hover {
+            background: #e46a8b;
+        }
+        .signature {
+            color: #9f94b5;
+            text-align: center;
+            margin-top: 0.6rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <!-- canvas where the heart is drawn -->
+    <canvas id="heartCanvas" width="400" height="400"></canvas>
+
+    <div class="caption">
+        <span>❤️ parametric heart</span>
+        <button id="redrawBtn">♡ redraw</button>
+    </div>
+    <div class="signature">x = 16 sin³ t &nbsp; y = 13cos t – 5 cos 2t – 2 cos 3t – cos 4t</div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // ————— heart dimensions & position —————
+        const cx = 200;          // center X
+        const cy = 200;          // center Y
+        const scale = 12;        // amplifies the parametric curve
+
+        // ————— classic heart equation (tapered, realistic) —————
+        // x = 16 sin³ t ,  y = 13cos(t) - 5 cos(2t) - 2 cos(3t) - cos(4t)
+        // t from 0 to 2π  (or 0 to π · 2)
+        function heartX(t) {
+            return 16 * Math.pow(Math.sin(t), 3);
+        }
+
+        function heartY(t) {
+            return 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+        }
+
+        // ————— main drawing function —————
+        function drawHeart(glow = true) {
+            // clear canvas with a smooth dark background (satin noir)
+            ctx.clearRect(0, 0, 400, 400);
+
+            // --- background subtle ornament (optional vignette) ---
+            const grad = ctx.createRadialGradient(200, 200, 80, 200, 200, 380);
+            grad.addColorStop(0, '#2b1f30');
+            grad.addColorStop(1, '#181424');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 400, 400);
+
+            // --- draw inner glow / soft aura (to make heart pop) ---
+            if (glow) {
+                ctx.shadowColor = '#ff99bb';
+                ctx.shadowBlur = 22;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+            }
+
+            // --- parametric plotting of the heart ---
+            ctx.beginPath();
+            const steps = 200;               // smooth enough curve
+            const stepSize = (2 * Math.PI) / steps;
+
+            // first point (t=0)
+            let t = 0;
+            let x0 = cx + scale * heartX(t);
+            let y0 = cy - scale * heartY(t);   // minus because canvas Y goes downwards
+            ctx.moveTo(x0, y0);
+
+            for (let i = 1; i <= steps; i++) {
+                t = i * stepSize;
+                // parametric point
+                let x = cx + scale * heartX(t);
+                let y = cy - scale * heartY(t);   // flip Y to point upwards
+                ctx.lineTo(x, y);
+            }
+
+            // close path back to first point (just to be safe, though curve loops naturally)
+            ctx.closePath();
+
+            // --- fill style: glossy red with subtle gradient ---
+            const heartGrad = ctx.createLinearGradient(120, 150, 280, 280);
+            heartGrad.addColorStop(0, '#ff3b6f');
+            heartGrad.addColorStop(0.45, '#e3254b');
+            heartGrad.addColorStop(0.8, '#b81c3c');
+            heartGrad.addColorStop(1, '#8f1430');
+
+            ctx.fillStyle = heartGrad;
+            ctx.fill();
+
+            // extra pop: bright highlight on the upper left bulge
+            if (glow) {
+                ctx.shadowBlur = 18;      // reduce a bit for the highlight pass
+            }
+
+            // --- subtle inner shine (a second fill with softer light) ---
+            ctx.globalCompositeOperation = 'overlay';
+            ctx.fillStyle = '#ffdbe8';
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';  // back to normal
+
+            // --- draw crisp outline to define edges ---
+            ctx.shadowBlur = 0;            // no shadow on outline
+            ctx.shadowColor = 'transparent';
+            ctx.strokeStyle = '#fcc6d4';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+
+            // --- add tiny highlight dots / spark (optional) ---
+            ctx.beginPath();
+            ctx.arc(150, 150, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff8fa';
+            ctx.shadowBlur = 22;
+            ctx.shadowColor = '#ffc0d5';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(258, 178, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff3f7';
+            ctx.fill();
+
+            // --- reset shadow to avoid messing with future redraws ---
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // --- optional tiny specular reflection on lower curve (just for charm) ---
+            ctx.beginPath();
+            ctx.arc(200, 240, 6, 0, Math.PI, false);
+            ctx.strokeStyle = '#ffb0c7';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        // initial drawing
+        drawHeart(true);
+
+        // button click -> redraw with slight variation (maybe alternate glow style)
+        const btn = document.getElementById('redrawBtn');
+        btn.addEventListener('click', function() {
+            // toggle glow intensity / color just for fun
+            // simple random tiny offset? no – just redraw exactly but quick flash
+            drawHeart(true);
+
+            // bonus: very subtle "pulse" effect by quickly scaling canvas (just for micro feedback)
+            canvas.style.transform = 'scale(0.99)';
+            setTimeout(() => canvas.style.transform = 'scale(1)', 80);
+        });
+
+        // optional: double‑click on canvas also redraws
+        canvas.addEventListener('dblclick', function() {
+            drawHeart(true);
+            canvas.style.transform = 'scale(0.98)';
+            setTimeout(() => canvas.style.transform = 'scale(1)', 100);
+        });
+
+        // tiny hover effect for playfulness (css does :active, but we keep js subtle)
+        canvas.addEventListener('mouseenter', () => {
+            canvas.style.filter = 'drop-shadow(0 0 12px #ff96b9)';
+        });
+        canvas.addEventListener('mouseleave', () => {
+            canvas.style.filter = 'none';
+        });
+    })();
+</script>
+
+</body>
+</html>
